@@ -1,4 +1,4 @@
-"""Хендлер /start — регистрация и привязка к паре."""
+"""Хендлер /start — регистрация, ввод имени/ДР и привязка к паре."""
 
 from aiogram import F, Router
 from aiogram.filters import CommandStart
@@ -19,50 +19,128 @@ from app.db.repositories.user import (
 )
 from app.db.seed import seed_couple_data
 from app.keyboards.reply import main_menu_keyboard
-from app.states.forms import CoupleForm
+from app.states.forms import CoupleForm, RegistrationForm
 from app.utils import texts
 
 router = Router(name="start")
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, session: AsyncSession, state: FSMContext) -> None:
+async def cmd_start(
+    message: Message, session: AsyncSession, state: FSMContext
+) -> None:
     """Обработка команды /start — регистрация и выбор действия."""
     await state.clear()
 
     tg_user = message.from_user
     db_user = await get_user_by_telegram_id(session, tg_user.id)
 
-    # Регистрация нового пользователя
-    if db_user is None:
-        db_user = await create_user(
-            session,
-            telegram_id=tg_user.id,
-            first_name=tg_user.first_name,
-            username=tg_user.username,
-        )
-
-    # Если уже в паре — показываем меню
-    if db_user.couple_id is not None:
+    # Если уже зарегистрирован и в паре — показываем меню
+    if db_user and db_user.couple_id is not None:
         await message.answer(
-            texts.WELCOME.format(name=tg_user.first_name),
+            texts.WELCOME.format(name=db_user.name),
             reply_markup=main_menu_keyboard(),
             parse_mode="HTML",
         )
         return
 
-    # Предлагаем создать пару или присоединиться
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="🆕 Создать пару", callback_data="couple_create"),
-        ],
-        [
-            InlineKeyboardButton(text="🔗 У меня есть код", callback_data="couple_join"),
-        ],
-    ])
+    # Если уже зарегистрирован, но без пары
+    if db_user:
+        await _show_couple_choice(message, db_user.name)
+        return
+
+    # Новый пользователь — запрашиваем имя
+    await state.set_state(RegistrationForm.waiting_name)
+    await message.answer(
+        "👋 <b>Добро пожаловать!</b>\n\n"
+        "Как тебя зовут? Введи своё имя:",
+        parse_mode="HTML",
+    )
+
+
+@router.message(RegistrationForm.waiting_name)
+async def reg_name(
+    message: Message, state: FSMContext
+) -> None:
+    """Получить имя и спросить ДР."""
+    name = message.text.strip()
+    if len(name) < 1 or len(name) > 64:
+        await message.answer("❌ Имя должно быть от 1 до 64 символов.")
+        return
+
+    await state.update_data(reg_name=name)
+    await state.set_state(RegistrationForm.waiting_birthday)
+    await message.answer(
+        f"Отлично, <b>{name}</b>! 🎉\n\n"
+        "Введи свою дату рождения (ДД.ММ.ГГГГ)\n"
+        "или отправь <b>-</b> чтобы пропустить:",
+        parse_mode="HTML",
+    )
+
+
+@router.message(RegistrationForm.waiting_birthday)
+async def reg_birthday(
+    message: Message, session: AsyncSession, state: FSMContext
+) -> None:
+    """Получить ДР и создать пользователя."""
+    text = message.text.strip()
+    birthday = None
+
+    if text not in ("-", "нет", "пропустить"):
+        from datetime import datetime
+
+        try:
+            dt = datetime.strptime(text, "%d.%m.%Y")
+            birthday = dt.strftime("%d.%m.%Y")
+        except ValueError:
+            await message.answer(
+                "❌ Неверный формат. Используй <b>ДД.ММ.ГГГГ</b>"
+                " или <b>-</b> чтобы пропустить:",
+                parse_mode="HTML",
+            )
+            return
+
+    data = await state.get_data()
+    tg_user = message.from_user
+
+    db_user = await create_user(
+        session,
+        telegram_id=tg_user.id,
+        first_name=tg_user.first_name,
+        username=tg_user.username,
+    )
+
+    # Сохраняем имя и ДР
+    db_user.display_name = data["reg_name"]
+    if birthday:
+        db_user.birthday = birthday
+    await session.commit()
+
+    await state.clear()
+    await _show_couple_choice(message, db_user.name)
+
+
+async def _show_couple_choice(message: Message, name: str) -> None:
+    """Показать выбор: создать пару или присоединиться."""
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🆕 Создать пару",
+                    callback_data="couple_create",
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔗 У меня есть код",
+                    callback_data="couple_join",
+                ),
+            ],
+        ]
+    )
 
     await message.answer(
-        texts.WELCOME.format(name=tg_user.first_name),
+        texts.WELCOME.format(name=name),
         reply_markup=keyboard,
         parse_mode="HTML",
     )
@@ -74,7 +152,6 @@ async def create_couple_handler(
     session: AsyncSession,
 ) -> None:
     """Создать новую пару и сгенерировать invite-код."""
-
     tg_user = callback.from_user
     db_user = await get_user_by_telegram_id(session, tg_user.id)
 
@@ -82,13 +159,8 @@ async def create_couple_handler(
         await callback.answer(texts.ALREADY_IN_COUPLE, show_alert=True)
         return
 
-    # Создаём пару
     couple = await create_couple(session)
-
-    # Привязываем пользователя
     await update_user_couple(session, db_user, couple.id)
-
-    # Загружаем начальные данные
     await seed_couple_data(session, couple.id, tg_user.id)
 
     await callback.message.edit_text(
@@ -110,7 +182,6 @@ async def join_couple_prompt(
     state: FSMContext,
 ) -> None:
     """Запросить invite-код для присоединения к паре."""
-
     await callback.message.edit_text(
         texts.ENTER_INVITE_CODE,
         parse_mode="HTML",
@@ -129,7 +200,6 @@ async def process_invite_code(
     code = message.text.strip()
     couple = await get_couple_by_invite_code(session, code)
 
-    # Проверяем валидность кода и что пара не заполнена
     if couple is None or len(couple.users) >= 2:
         await message.answer(texts.INVALID_CODE, parse_mode="HTML")
         return
@@ -137,9 +207,7 @@ async def process_invite_code(
     tg_user = message.from_user
     db_user = await get_user_by_telegram_id(session, tg_user.id)
 
-    # Привязываем к паре
     await update_user_couple(session, db_user, couple.id)
-
     await state.clear()
 
     await message.answer(

@@ -3,6 +3,13 @@
 from aiogram.fsm.state import State, StatesGroup
 
 
+class RegistrationForm(StatesGroup):
+    """Состояния для регистрации нового пользователя."""
+
+    waiting_name = State()
+    waiting_birthday = State()
+
+
 class CoupleForm(StatesGroup):
     """Состояния для создания/присоединения к паре."""
 

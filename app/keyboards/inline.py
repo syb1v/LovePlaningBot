@@ -13,6 +13,7 @@ from app.keyboards.callbacks import (
     ItemCB,
     PageCB,
     RandomCB,
+    RemindCB,
     SettingsCB,
     StatusCB,
     VoteCB,
@@ -279,7 +280,7 @@ def remind_settings_keyboard(remind_before: int) -> InlineKeyboardMarkup:
         active = "✅" if remind_before & flag else "⬜"
         builder.button(
             text=f"{active} {label}",
-            callback_data=SettingsCB(action=f"toggle_remind:{flag}"),
+            callback_data=RemindCB(flag=flag),
         )
     builder.adjust(2)
     builder.row(_back_button("settings"))

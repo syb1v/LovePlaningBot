@@ -16,7 +16,7 @@ from app.db.repositories.holiday import (
     toggle_holiday,
 )
 from app.db.repositories.user import get_user_by_telegram_id
-from app.keyboards.callbacks import HolidayCB, SettingsCB
+from app.keyboards.callbacks import HolidayCB, RemindCB, SettingsCB
 from app.keyboards.inline import (
     holiday_detail_keyboard,
     holidays_keyboard,
@@ -230,14 +230,14 @@ async def show_remind_settings(
     await callback.answer()
 
 
-@router.callback_query(SettingsCB.filter(F.action.startswith("toggle_remind:")))
+@router.callback_query(RemindCB.filter())
 async def toggle_remind(
     callback: CallbackQuery,
-    callback_data: SettingsCB,
+    callback_data: RemindCB,
     session: AsyncSession,
 ) -> None:
     """Переключить флаг напоминания."""
-    flag = int(callback_data.action.split(":")[1])
+    flag = callback_data.flag
 
     db_user = await get_user_by_telegram_id(session, callback.from_user.id)
     if not db_user or not db_user.couple_id:

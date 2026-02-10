@@ -70,3 +70,9 @@ class SettingsCB(CallbackData, prefix="set"):
     """Действия в настройках."""
 
     action: str  # name, birthday, rel_date, remind, holidays
+
+
+class RemindCB(CallbackData, prefix="rem"):
+    """Переключение флага напоминания."""
+
+    flag: int  # 1, 2, 4, 8
