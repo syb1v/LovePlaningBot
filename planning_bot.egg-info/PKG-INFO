@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: planning-bot
+Version: 1.0.0
+Summary: Telegram-бот — совместный планировщик для пары 💑
+Requires-Python: >=3.12
+Requires-Dist: aiogram~=3.24
+Requires-Dist: sqlalchemy[asyncio]~=2.0
+Requires-Dist: aiosqlite~=0.20
+Requires-Dist: alembic~=1.14
+Requires-Dist: pydantic-settings~=2.7
+Requires-Dist: apscheduler~=3.10
+Provides-Extra: dev
+Requires-Dist: ruff; extra == "dev"
