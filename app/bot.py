@@ -13,7 +13,6 @@ from app.handlers import (
     categories,
     items,
     menu,
-    mood,
     random_pick,
     reminders,
     start,
@@ -56,11 +55,10 @@ def create_dispatcher() -> Dispatcher:
         items.router,
         voting.router,
         random_pick.router,
-        mood.router,
         stats.router,
         reminders.router,
         settings_handler.router,
     )
 
-    logger.info("Диспетчер настроен: %d роутеров подключено.", 11)
+    logger.info("Диспетчер настроен: %d роутеров подключено.", 10)
     return dp

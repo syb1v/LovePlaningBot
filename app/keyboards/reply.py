@@ -12,7 +12,7 @@ def main_menu_keyboard() -> ReplyKeyboardMarkup:
                 KeyboardButton(text="🎲 Рандом"),
             ],
             [
-                KeyboardButton(text="💕 Настроение"),
+                KeyboardButton(text="⏰ Напоминания"),
                 KeyboardButton(text="📊 Статистика"),
             ],
             [

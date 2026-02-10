@@ -11,7 +11,6 @@ from app.keyboards.callbacks import (
     ConfirmCB,
     HolidayCB,
     ItemCB,
-    MoodCB,
     PageCB,
     RandomCB,
     SettingsCB,
@@ -30,8 +29,6 @@ STATUS_EMOJI = {
 }
 
 # Эмодзи для настроения
-MOOD_EMOJIS = ["😍", "😊", "😌", "🥰", "😎", "😴", "😢", "😡", "🤒", "🥳"]
-
 
 def _back_button(
     to: str, entity_id: int = 0, text: str = "◀️ Назад"
@@ -173,17 +170,6 @@ def confirm_delete_keyboard(item_id: int) -> InlineKeyboardMarkup:
     builder.adjust(2)
     return builder.as_markup()
 
-
-def mood_keyboard() -> InlineKeyboardMarkup:
-    """Клавиатура выбора настроения."""
-    builder = InlineKeyboardBuilder()
-    for emoji in MOOD_EMOJIS:
-        builder.button(
-            text=emoji,
-            callback_data=MoodCB(emoji=emoji),
-        )
-    builder.adjust(5)
-    return builder.as_markup()
 
 
 def random_category_keyboard(categories: list[Category]) -> InlineKeyboardMarkup:

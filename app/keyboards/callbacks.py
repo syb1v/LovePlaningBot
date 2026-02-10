@@ -30,10 +30,6 @@ class VoteCB(CallbackData, prefix="vote"):
     approve: bool
 
 
-class MoodCB(CallbackData, prefix="mood"):
-    """Выбор эмодзи настроения."""
-
-    emoji: str
 
 
 class RandomCB(CallbackData, prefix="rnd"):
